@@ -1,16 +1,88 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { Stack, StackProps } from "aws-cdk-lib";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ecr from "aws-cdk-lib/aws-ecr";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import {
+  CpuArchitecture,
+  FargateTaskDefinition,
+  OperatingSystemFamily,
+} from "aws-cdk-lib/aws-ecs";
+import * as ecspatterns from "aws-cdk-lib/aws-ecs-patterns";
+import * as logs from "aws-cdk-lib/aws-logs";
+import { Construct } from "constructs";
+import { config } from "./config";
 
 export class ZeetFargateStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    let vpc: ec2.IVpc | undefined;
+    if (config.ZEET_CDK_FARGATE_VPC_ID) {
+      vpc = ec2.Vpc.fromLookup(this, "Vpc", {
+        vpcId: config.ZEET_CDK_FARGATE_VPC_ID,
+      });
+    }
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'ZeetFargateQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    const cluster = new ecs.Cluster(this, "Cluster", {
+      containerInsights: true,
+      vpc,
+    });
+
+    let image: ecs.ContainerImage;
+
+    if (config.ZEET_CDK_FARGATE_CONTAINER_REPOSITORY_ARN) {
+      const repository = ecr.Repository.fromRepositoryArn(
+        this,
+        "Repository",
+        config.ZEET_CDK_FARGATE_CONTAINER_REPOSITORY_ARN
+      );
+
+      const tag = config.ZEET_CDK_FARGATE_CONTAINER_IMAGE.split(":").pop();
+
+      image = ecs.ContainerImage.fromEcrRepository(repository, tag);
+    } else {
+      image = ecs.ContainerImage.fromRegistry(
+        config.ZEET_CDK_FARGATE_CONTAINER_IMAGE
+      );
+    }
+
+    if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
+      new ecspatterns.ApplicationLoadBalancedFargateService(this, "Service", {
+        cluster,
+        circuitBreaker: {
+          rollback: true,
+        },
+        cpu: config.ZEET_CDK_FARGATE_CPU,
+        memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
+        desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
+        taskImageOptions: {
+          image,
+          containerPort: config.ZEET_CDK_FARGATE_HTTP_PORT,
+          logDriver: ecs.LogDrivers.awsLogs({
+            streamPrefix: id,
+            logRetention: logs.RetentionDays.ONE_YEAR,
+          }),
+        },
+      });
+    } else {
+      const taskDefinition = new FargateTaskDefinition(this, "Task", {
+        runtimePlatform: {
+          cpuArchitecture: CpuArchitecture.X86_64,
+          operatingSystemFamily: OperatingSystemFamily.LINUX,
+        },
+        cpu: config.ZEET_CDK_FARGATE_CPU,
+        memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
+      });
+      taskDefinition.addContainer("Container", {
+        image,
+      });
+
+      new ecs.FargateService(this, "Service", {
+        cluster,
+        assignPublicIp: true,
+        taskDefinition,
+        desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
+      });
+    }
   }
 }
