@@ -17,10 +17,17 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 Configuration:
 
-ZEET_CDK_STACK_ID: stack id
-ZEET_CDK_FARGATE_VPC_ID: string
-ZEET_CDK_FARGATE_HTTP_PORT: string
-ZEET_CDK_FARGATE_CONTAINER_IMAGE: string
-ZEET_CDK_FARGATE_CPU: int
-ZEET_CDK_FARGATE_MEMORY: int
-ZEET_CDK_FARGATE_REPLICA: int
+```
+type Config = {
+  ZEET_CDK_ACCOUNT: string;
+  ZEET_CDK_REGION: string;
+  ZEET_CDK_STACK_ID: string;
+  ZEET_CDK_FARGATE_VPC_ID: string;
+  ZEET_CDK_FARGATE_CONTAINER_REPOSITORY_ARN: string;
+  ZEET_CDK_FARGATE_CONTAINER_IMAGE: string;
+  ZEET_CDK_FARGATE_HTTP_PORT: number;
+  ZEET_CDK_FARGATE_CPU: number;
+  ZEET_CDK_FARGATE_MEMORY: number;
+  ZEET_CDK_FARGATE_REPLICA: number;
+};
+```
