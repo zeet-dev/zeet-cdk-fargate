@@ -5,6 +5,7 @@ type Config = {
   ZEET_CDK_FARGATE_VPC_ID: string;
   ZEET_CDK_FARGATE_CONTAINER_REPOSITORY_ARN: string;
   ZEET_CDK_FARGATE_CONTAINER_IMAGE: string;
+  ZEET_CDK_FARGATE_ENV_FILE: string;
   ZEET_CDK_FARGATE_HTTP_PORT: number;
   ZEET_CDK_FARGATE_CPU: number;
   ZEET_CDK_FARGATE_MEMORY: number;
@@ -20,6 +21,7 @@ export const config: Config = {
     process.env.ZEET_CDK_FARGATE_CONTAINER_REPOSITORY_ARN || "",
   ZEET_CDK_FARGATE_CONTAINER_IMAGE:
     process.env.ZEET_CDK_FARGATE_CONTAINER_IMAGE || "",
+  ZEET_CDK_FARGATE_ENV_FILE: process.env.ZEET_CDK_FARGATE_ENV_FILE || "",
   ZEET_CDK_FARGATE_HTTP_PORT: parseInt(
     process.env.ZEET_CDK_FARGATE_HTTP_PORT || "0"
   ),
@@ -35,5 +37,9 @@ export const config: Config = {
 export const validate = (config: Config) => {
   if (!config.ZEET_CDK_FARGATE_CONTAINER_IMAGE) {
     throw new Error("ZEET_CDK_FARGATE_CONTAINER_IMAGE must be set");
+  }
+
+  if (!config.ZEET_CDK_FARGATE_VPC_ID) {
+    throw new Error("ZEET_CDK_FARGATE_VPC_ID must be set");
   }
 };

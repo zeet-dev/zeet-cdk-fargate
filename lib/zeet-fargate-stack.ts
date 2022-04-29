@@ -16,12 +16,9 @@ export class ZeetFargateStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    let vpc: ec2.IVpc | undefined;
-    if (config.ZEET_CDK_FARGATE_VPC_ID) {
-      vpc = ec2.Vpc.fromLookup(this, "Vpc", {
-        vpcId: config.ZEET_CDK_FARGATE_VPC_ID,
-      });
-    }
+    const vpc = ec2.Vpc.fromLookup(this, "Vpc", {
+      vpcId: config.ZEET_CDK_FARGATE_VPC_ID,
+    });
 
     const cluster = new ecs.Cluster(this, "Cluster", {
       containerInsights: true,
@@ -49,9 +46,6 @@ export class ZeetFargateStack extends Stack {
     if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
       new ecspatterns.ApplicationLoadBalancedFargateService(this, "Service", {
         cluster,
-        circuitBreaker: {
-          rollback: true,
-        },
         cpu: config.ZEET_CDK_FARGATE_CPU,
         memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
         desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
@@ -75,6 +69,9 @@ export class ZeetFargateStack extends Stack {
       });
       taskDefinition.addContainer("Container", {
         image,
+        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
+          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
+          : undefined,
       });
 
       new ecs.FargateService(this, "Service", {
