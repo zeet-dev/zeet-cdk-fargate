@@ -43,37 +43,29 @@ export class ZeetFargateStack extends Stack {
       );
     }
 
+    const taskDefinition = new FargateTaskDefinition(this, "Task", {
+      runtimePlatform: {
+        cpuArchitecture: CpuArchitecture.X86_64,
+        operatingSystemFamily: OperatingSystemFamily.LINUX,
+      },
+      cpu: config.ZEET_CDK_FARGATE_CPU,
+      memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
+    });
+    taskDefinition.addContainer("Container", {
+      image,
+      environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
+        ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
+        : undefined,
+    });
+
     if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
       new ecspatterns.ApplicationLoadBalancedFargateService(this, "Service", {
         cluster,
-        cpu: config.ZEET_CDK_FARGATE_CPU,
-        memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
+        assignPublicIp: true,
+        taskDefinition,
         desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
-        taskImageOptions: {
-          image,
-          containerPort: config.ZEET_CDK_FARGATE_HTTP_PORT,
-          logDriver: ecs.LogDrivers.awsLogs({
-            streamPrefix: id,
-            logRetention: logs.RetentionDays.ONE_YEAR,
-          }),
-        },
       });
     } else {
-      const taskDefinition = new FargateTaskDefinition(this, "Task", {
-        runtimePlatform: {
-          cpuArchitecture: CpuArchitecture.X86_64,
-          operatingSystemFamily: OperatingSystemFamily.LINUX,
-        },
-        cpu: config.ZEET_CDK_FARGATE_CPU,
-        memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
-      });
-      taskDefinition.addContainer("Container", {
-        image,
-        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
-          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
-          : undefined,
-      });
-
       new ecs.FargateService(this, "Service", {
         cluster,
         assignPublicIp: true,
