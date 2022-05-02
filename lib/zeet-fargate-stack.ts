@@ -51,14 +51,20 @@ export class ZeetFargateStack extends Stack {
       cpu: config.ZEET_CDK_FARGATE_CPU,
       memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
     });
-    taskDefinition.addContainer("Container", {
-      image,
-      environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
-        ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
-        : undefined,
-    });
 
     if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
+      taskDefinition.addContainer("Container", {
+        image,
+        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
+          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
+          : undefined,
+        portMappings: [
+          {
+            containerPort: config.ZEET_CDK_FARGATE_HTTP_PORT,
+          },
+        ],
+      });
+
       new ecspatterns.ApplicationLoadBalancedFargateService(this, "Service", {
         cluster,
         assignPublicIp: true,
@@ -66,6 +72,13 @@ export class ZeetFargateStack extends Stack {
         desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
       });
     } else {
+      taskDefinition.addContainer("Container", {
+        image,
+        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
+          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
+          : undefined,
+      });
+
       new ecs.FargateService(this, "Service", {
         cluster,
         assignPublicIp: true,
