@@ -2,6 +2,7 @@ import { Stack, StackProps } from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import {
   CpuArchitecture,
   FargateTaskDefinition,
@@ -43,6 +44,15 @@ export class ZeetFargateStack extends Stack {
       );
     }
 
+    const executionRole = new iam.Role(this, "ExecRole", {
+      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+    });
+    executionRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonECSTaskExecutionRolePolicy"
+      )
+    );
+
     const taskDefinition = new FargateTaskDefinition(this, "Task", {
       runtimePlatform: {
         cpuArchitecture: CpuArchitecture.X86_64,
@@ -50,19 +60,19 @@ export class ZeetFargateStack extends Stack {
       },
       cpu: config.ZEET_CDK_FARGATE_CPU,
       memoryLimitMiB: config.ZEET_CDK_FARGATE_MEMORY,
+      executionRole,
+    });
+
+    const container = taskDefinition.addContainer("Container", {
+      image,
+      environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
+        ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
+        : undefined,
     });
 
     if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
-      taskDefinition.addContainer("Container", {
-        image,
-        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
-          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
-          : undefined,
-        portMappings: [
-          {
-            containerPort: config.ZEET_CDK_FARGATE_HTTP_PORT,
-          },
-        ],
+      container.addPortMappings({
+        containerPort: config.ZEET_CDK_FARGATE_HTTP_PORT,
       });
 
       new ecspatterns.ApplicationLoadBalancedFargateService(this, "Service", {
@@ -72,13 +82,6 @@ export class ZeetFargateStack extends Stack {
         desiredCount: config.ZEET_CDK_FARGATE_REPLICA,
       });
     } else {
-      taskDefinition.addContainer("Container", {
-        image,
-        environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
-          ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
-          : undefined,
-      });
-
       new ecs.FargateService(this, "Service", {
         cluster,
         assignPublicIp: true,
