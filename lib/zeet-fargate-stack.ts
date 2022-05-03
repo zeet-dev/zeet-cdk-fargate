@@ -12,6 +12,8 @@ import * as ecspatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 import { config } from "./config";
+import * as dotenv from "dotenv";
+import * as fs from "fs";
 
 export class ZeetFargateStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -67,11 +69,16 @@ export class ZeetFargateStack extends Stack {
       executionRole,
     });
 
+    let environment = {};
+    if (config.ZEET_CDK_FARGATE_ENV_FILE) {
+      environment = dotenv.parse(
+        fs.readFileSync(config.ZEET_CDK_FARGATE_ENV_FILE)
+      );
+    }
+
     const container = taskDefinition.addContainer("Container", {
       image,
-      environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
-        ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
-        : undefined,
+      environment,
       logging,
     });
 
