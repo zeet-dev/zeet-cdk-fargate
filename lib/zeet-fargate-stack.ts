@@ -49,9 +49,13 @@ export class ZeetFargateStack extends Stack {
     });
     executionRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName(
-        "AmazonECSTaskExecutionRolePolicy"
+        "service-role/AmazonECSTaskExecutionRolePolicy"
       )
     );
+
+    const logging = new ecs.AwsLogDriver({
+      streamPrefix: `/zeet/${config.ZEET_CDK_STACK_ID}`,
+    });
 
     const taskDefinition = new FargateTaskDefinition(this, "Task", {
       runtimePlatform: {
@@ -68,6 +72,7 @@ export class ZeetFargateStack extends Stack {
       environmentFiles: config.ZEET_CDK_FARGATE_ENV_FILE
         ? [ecs.EnvironmentFile.fromAsset(config.ZEET_CDK_FARGATE_ENV_FILE)]
         : undefined,
+      logging,
     });
 
     if (config.ZEET_CDK_FARGATE_HTTP_PORT) {
